@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>중세 판타지 로그 RPG</title>
+  <style>
+    body {
+      font-family: 'Nanum Gothic', sans-serif;
+      background-color: #111;
+      color: #eee;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #ffe066;
+    }
+    #log {
+      white-space: pre-line;
+      background: #222;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+      height: 300px;
+      overflow-y: scroll;
+    }
+    button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 16px;
+      background-color: #333;
+      color: #fff;
+      border: 1px solid #666;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #444;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>중세 판타지 로그 RPG</h1>
+  <div id="game"></div>
+  <div id="log"></div>
+
+  <script>
+    const gameDiv = document.getElementById('game');
+    const logDiv = document.getElementById('log');
+
+    const jobs = {
+      "기사": {
+        desc: "검과 방패로 전장을 지배하는 강인한 전사.",
+        hp: 200,
+        mp: 150,
+        skills: [
+          { name: "강타", cost: 20 },
+          { name: "방패 밀치기", cost: 15 },
+          { name: "도발", cost: 10 },
+          { name: "철벽", cost: 25 }
+        ],
+        promotion: "소드 마스터"
+      },
+      "마법사": {
+        desc: "원소 마법으로 적을 제압하는 지성의 지배자.",
+        hp: 200,
+        mp: 150,
+        skills: [
+          { name: "파이어볼", cost: 20 },
+          { name: "아이스 스피어", cost: 25 },
+          { name: "마나 실드", cost: 15 },
+          { name: "체인 라이트닝", cost: 30 }
+        ],
+        promotion: "마탑주"
+      },
+      "성직자": {
+        desc: "빛의 기도로 아군을 지키고 적을 벌하는 성스러운 존재.",
+        hp: 200,
+        mp: 150,
+        skills: [
+          { name: "성스러운 일격", cost: 20 },
+          { name: "치유의 기도", cost: 15 },
+          { name: "천벌", cost: 30 },
+          { name: "빛의 가호", cost: 25 }
+        ],
+        promotion: "성황"
+      },
+      "도적": {
+        desc: "어둠 속에서 기회를 노리는 빠르고 치명적인 암살자.",
+        hp: 200,
+        mp: 150,
+        skills: [
+          { name: "암습", cost: 20 },
+          { name: "독 칼날", cost: 15 },
+          { name: "은신", cost: 10 },
+          { name: "급소 찌르기", cost: 30 }
+        ],
+        promotion: "어쌔신"
+      }
+    };
+
+    const monsters = ["고블린", "늑대인간", "해골 병사", "트롤", "오우거", "리치", "드레이크", "암흑 기사", "사신"];
+
+    let player = null;
+    let monster = null;
+    let stage = 1;
+    let level = 1;
+    let exp = 0;
+
+    function log(text) {
+      logDiv.innerText += text + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function startGame() {
+      gameDiv.innerHTML = '<h2>직업을 선택하세요:</h2>';
+      for (let job in jobs) {
+        const btn = document.createElement('button');
+        btn.innerText = job;
+        btn.onclick = () => showJobInfo(job);
+        gameDiv.appendChild(btn);
+      }
+    }
+
+    function showJobInfo(job) {
+      const j = jobs[job];
+      gameDiv.innerHTML = `
+        <h2>${job} - ${j.desc}</h2>
+        <p>HP: ${j.hp}, MP: ${j.mp}</p>
+        <button onclick="selectJob('${job}')">이 직업 선택</button>
+        <button onclick="startGame()">다시 선택</button>
+      `;
+    }
+
+    function selectJob(job) {
+      const j = jobs[job];
+      player = {
+        job,
+        promotion: j.promotion,
+        hp: j.hp,
+        mp: j.mp,
+        skills: j.skills,
+        baseHp: j.hp,
+        baseMp: j.mp
+      };
+      log(`[직업 선택] ${job}을 선택했습니다.`);
+      startTutorial();
+    }
+
+    function startTutorial() {
+      log(`[튜토리얼] ${player.job}의 전투 튜토리얼이 시작됩니다.`);
+      monster = { name: "훈련용 허수아비", hp: 80, attack: 0 };
+      showSkills();
+    }
+
+    function spawnMonster() {
+      if (stage > 250) {
+        log(`\n[클리어] 모든 250개의 스테이지를 돌파했습니다! 축하합니다!`);
+        gameDiv.innerHTML = '<button onclick="startGame()">처음부터 다시 하기</button>';
+        return;
+      }
+
+      const name = monsters[Math.floor(Math.random() * monsters.length)];
+      const hp = 80 + stage * 5;
+      const attack = 5 + Math.floor(stage / 2);
+      monster = { name, hp, attack };
+      log(`\n[스테이지 ${stage}] ${monster.name} 등장! (HP: ${monster.hp})`);
+      showSkills();
+    }
+
+    function showSkills() {
+      gameDiv.innerHTML = `<h2>사용할 스킬을 선택하세요 (LV ${level})</h2>`;
+      player.skills.forEach((skill) => {
+        const btn = document.createElement('button');
+        btn.innerText = `${skill.name} (MP ${skill.cost})`;
+        btn.onclick = () => useSkill(skill);
+        gameDiv.appendChild(btn);
+      });
+    }
+
+    function useSkill(skill) {
+      if (player.mp < skill.cost) {
+        log(`마나가 부족합니다! (현재: ${player.mp}, 필요: ${skill.cost})`);
+        return;
+      }
+
+      player.mp -= skill.cost;
+      const damage = Math.floor(Math.random() * 20 + 10 + level);
+      monster.hp -= damage;
+      log(`${skill.name} 사용! ${monster.name}에게 ${damage} 피해! (남은 HP: ${monster.hp})`);
+
+      if (monster.hp <= 0) {
+        log(`${monster.name} 처치 성공!`);
+        gainExp(20 + stage * 2);
+        stage++;
+        if (stage % 50 === 0) tryPromotion();
+        gameDiv.innerHTML = '<button onclick="spawnMonster()">다음 전투</button>';
+      } else {
+        monsterAttack();
+      }
+    }
+
+    function monsterAttack() {
+      if (monster.attack === 0) {
+        log(`${monster.name}은 공격하지 않습니다.`);
+        return;
+      }
+      const damage = monster.attack + Math.floor(Math.random() * 5);
+      player.hp -= damage;
+      log(`${monster.name}의 공격! ${damage} 피해! (남은 HP: ${player.hp})`);
+      if (player.hp <= 0) {
+        log(`\n당신은 쓰러졌습니다... 게임 오버.`);
+        gameDiv.innerHTML = '<button onclick="startGame()">처음부터</button>';
+      }
+    }
+
+    function gainExp(amount) {
+      exp += amount;
+      log(`[EXP +${amount}] 현재 경험치: ${exp}`);
+      if (exp >= level * 50) {
+        level++;
+        exp = 0;
+        const hpUp = 20;
+        const mpUp = 15;
+        player.baseHp += hpUp;
+        player.baseMp += mpUp;
+        player.hp = player.baseHp;
+        player.mp = player.baseMp;
+        log(`\n[레벨 업!] LV.${level} 체력 +${hpUp}, 마나 +${mpUp}`);
+      }
+    }
+
+    function tryPromotion() {
+      log(`\n[전직] 당신은 강력한 모험가로 성장하여 ${player.promotion}으로 전직했습니다!`);
+      player.skills.push({ name: "궁극기", cost: 50 });
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
